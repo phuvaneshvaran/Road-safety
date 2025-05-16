@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Alternative Path Finder</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      #map {
+        width: 100%;
+        height: 600px;
+      }
+      body {
+        font-family: Arial, sans-serif;
+        margin: 10px;
+      }
+      label,
+      input {
+        margin: 5px;
+      }
+      #error {
+        color: red;
+      }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    {{ map_html | safe }}
+  </head>
+  <body>
+    <h2>Alternative Path Finder</h2>
+    <form id="pathForm">
+      <label for="start_lat">Start Latitude:</label>
+      <input
+        type="number"
+        step="0.0001"
+        id="start_lat"
+        name="start_lat"
+        value="37.70"
+        required
+      />
+      <label for="start_lon">Start Longitude:</label>
+      <input
+        type="number"
+        step="0.0001"
+        id="start_lon"
+        name="start_lon"
+        value="-122.50"
+        required
+      /><br />
+      <label for="end_lat">End Latitude:</label>
+      <input
+        type="number"
+        step="0.0001"
+        id="end_lat"
+        name="end_lat"
+        value="37.79"
+        required
+      />
+      <label for="end_lon">End Longitude:</label>
+      <input
+        type="number"
+        step="0.0001"
+        id="end_lon"
+        name="end_lon"
+        value="-122.40"
+        required
+      /><br />
+      <button type="submit">Find Alternative Path</button>
+    </form>
+    <div id="error"></div>
+    <div id="map"></div>
+
+    <script>
+      var map = null;
+      var pathLayer = null;
+
+      function initMap() {
+        // The map HTML is already rendered by folium in map_html
+        // We just need to get the map object from the folium iframe
+        // But since folium renders a full map, we will replace the #map div with the folium map
+        // So no need to initialize here
+      }
+
+      $(document).ready(function () {
+        // Replace #map div with folium map HTML
+        $("#map").html($("div.leaflet-container").parent().html());
+
+        $("#pathForm").submit(function (e) {
+          e.preventDefault();
+          $("#error").text("");
+          if (pathLayer) {
+            pathLayer.remove();
+          }
+
+          var start_lat = parseFloat($("#start_lat").val());
+          var start_lon = parseFloat($("#start_lon").val());
+          var end_lat = parseFloat($("#end_lat").val());
+          var end_lon = parseFloat($("#end_lon").val());
+
+          $.ajax({
+            url: "/find_path",
+            method: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({
+              start_lat: start_lat,
+              start_lon: start_lon,
+              end_lat: end_lat,
+              end_lon: end_lon,
+            }),
+            success: function (response) {
+              var path = response.path;
+              var latlngs = path.map(function (coord) {
+                return [coord[0], coord[1]];
+              });
+              pathLayer = L.polyline(latlngs, { color: "blue" }).addTo(
+                window.map
+              );
+              window.map.fitBounds(pathLayer.getBounds());
+            },
+            error: function (xhr) {
+              $("#error").text(xhr.responseJSON.error || "Error finding path");
+            },
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
